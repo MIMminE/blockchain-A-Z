@@ -45,7 +45,7 @@ class Blockchain:
         previous_block = self.chain[-1]
         previous_block_hash = previous_block.to_hash()
 
-        self.create_block(data, previous_block_hash)
+        return self.create_block(data, previous_block_hash)
 
     def create_block(self, data, previous_hash):
         block = Block(
@@ -69,8 +69,25 @@ class Blockchain:
             print(f'Hash: {block.to_hash()}')
             print('---------------------------')
 
+    def is_valid(self):
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i - 1]
+
+            # 1. 이전 해시값 검증
+            if current_block.previous_hash != previous_block.to_hash():
+                return False
+
+            # 2. 현재 블록의 해시값 검증
+            if current_block.to_hash()[:4] != '0000':
+                return False
+
+        return True
 
 if __name__ == '__main__':
     blockchain = Blockchain()
-    blockchain.do_create_block('First Block after Genesis')
+    block = blockchain.do_create_block('First Block after Genesis')
     blockchain.print_chain()
+
+    valid = blockchain.is_valid()
+    print(f'Blockchain valid: {valid}')
