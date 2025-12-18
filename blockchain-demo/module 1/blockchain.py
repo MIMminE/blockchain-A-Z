@@ -1,44 +1,76 @@
+import dataclasses
 import datetime
 import hashlib
+import json
 
-if __name__ == '__main__':
-    print(datetime.datetime.now())
 
-    hexdigest = hashlib.sha256('hello'.encode('utf-8')).hexdigest()
-    print(hexdigest)
+@dataclasses.dataclass
+class Block:
+    def __init__(self, index, timestamp, nonce, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.nonce = nonce
+        self.data = data
+        self.previous_hash = previous_hash
 
-    print("hello world")
+    def plus_nonce(self):
+        self.nonce += 1
+
+    # 파이썬 딕셔너리 형태인 블록을 문자열로 변경하는 것이다. (직렬화), sort_keys=True -> 키를 정렬하여 알파벳 순으로 정렬
+    # 내용은 같지만 순서가 다른 JSON 객체는 아예 다른 값으로 취급되고, 해시값도 완전히 달라지므로 정렬이 중요하다.
+    def to_hash(self):
+        encoded_block = json.dumps(self.__dict__, sort_keys=True).encode()
+        return hashlib.sha256(encoded_block).hexdigest()
 
 
 class Blockchain:
     def __init__(self):
-        self.chain = []
-        self.create_block(proof=1, previous_hash='0')  # 제네시스 블록 생성에 대한 부분이다. , 임의의 시작값 1, 이전 블록이 없으므로 0 으로 설정
+        self.chain: list[Block] = []
+        self.create_block(data='Genesis Block',
+                          previous_hash='0')  # 제네시스 블록 생성에 대한 부분이다. , 임의의 시작값 1, 이전 블록이 없으므로 0 으로 설정
 
-    def create_block(self, proof, previous_hash):
-        block = {
-            'index': len(self.chain) + 1,
-            'timestamp': str(datetime.datetime.now()),
-            'proof': proof,
-            'previous_hash': previous_hash
-        }
+    def proof_of_work(self, block: Block):
+        check_proof = False
+
+        while check_proof is False:
+            block_hash = block.to_hash()
+
+            # 3. 난이도 체크: 앞자리가 '0000'인지 확인
+            if block_hash[:4] == '0000':
+                check_proof = True
+            else:
+                block.plus_nonce()
+
+    def do_create_block(self, data="New Block Data"):
+        previous_block = self.chain[-1]
+        previous_block_hash = previous_block.to_hash()
+
+        self.create_block(data, previous_block_hash)
+
+    def create_block(self, data, previous_hash):
+        block = Block(
+            index=len(self.chain) + 1,
+            timestamp=str(datetime.datetime.now()),
+            nonce=0,
+            data=data,
+            previous_hash=previous_hash
+        )
+        self.proof_of_work(block)
         self.chain.append(block)
         return block
 
-    def proof_of_work(self):
-        previous_block = self.get_previous_block()
-        previous_proof = previous_block['proof']
-        new_proof = 1
-        check_proof = False
+    def print_chain(self):
+        for block in self.chain:
+            print(f'Index: {block.index}')
+            print(f'Timestamp: {block.timestamp}')
+            print(f'Nonce: {block.nonce}')
+            print(f'Data: {block.data}')
+            print(f'Previous Hash: {block.previous_hash}')
+            print(f'Hash: {block.to_hash()}')
+            print('---------------------------')
 
-        while not check_proof:
-            hash_operation = hashlib.sha256(str(new_proof ** 2 - previous_proof ** 2).encode()).hexdigest()
-            if hash_operation[:4] == '0000':
-                check_proof = True
-            else:
-                new_proof += 1
 
-        return new_proof
-
-    def get_previous_block(self):
-        return self.chain[-1]
+if __name__ == '__main__':
+    blockchain = Blockchain()
+    blockchain.do_create_block('First Block after Genesis')
+    blockchain.print_chain()
